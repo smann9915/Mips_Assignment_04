@@ -82,146 +82,193 @@ stay: .asciiz, "Stay\n"
 .text
 
 main:
+	#Draw the hazzard sign with the color green
 	lw $t9, green
 	jal start_draw
 
+	#Print the nuclear opening message
 	la $a0, nuclear_start
 	jal print
 	
+	#Print the game opening message
 	la $a0, opening
 	jal print
 	
+	#Get the user input
 	jal getString
 	
-	#comapare opening
+	# Check if the player moved the barrel
 	la $a0, move_barrel
 	la $a1, user_input
 	jal compare_strings
 	
 	beq $t5, $t6, losing_path
 	
-	#comapare opening
+	# Check if the player sat down
 	la $a0, sitdown
 	la $a1, user_input
 	jal compare_strings
 	
 	beq $t5, $t6, winning_path
 	
+	#All other input leads to a meltdown
 	j meltdown
 
 
+
+#Setup the registers used iterate over the displays pixels
 start_draw:
 	la $t0, bitmap
 	la $t1, hazard
 	li $t5, 256
+	
 	j draw_loop
 
 
+
+#Check if the byte value we are on is zero for white or 1 for the color at $t9
 draw_loop:
 	lbu $t3, 0($t1)
 	beqz $t3, draw_white
 	j draw_status
 	
+	
+	
+#Draw the pixel with the hexcode at $t9
 draw_status:	
 	move $t7, $t9
 	j draw_pixel
 
+#Draw the pixel as white
 draw_white:
 	lw $t7, white
 	j draw_pixel
 
 
+
+#Stores the hex code at $t7 into the address in $t0 then increments
 draw_pixel:
+	#Stores the color
 	sw $t7, 0($t0)
+	
+	#Updates the values used to get the next bytes address
 	addiu $t0, $t0, 4
 	addiu $t1, $t1, 1
 	addiu $t5, $t5, -1
 	
+	#If there are more bytes to go over than continue the loop
 	bnez $t5, draw_loop
 	jr $ra
 	
 
+
+#Path after moving the barrel
 losing_path:
 	Enter_Tunnel:
+		#Display next options
 		la $a0, losing_01
 		jal print
 	
+		#Get user input
 		jal getString
 	
+		#Check if entered tuneel
 		la $a0, enter_tunnel
 		la $a1, user_input
 		jal compare_strings
 	
+		#Else
 		beq $t5, $zero, meltdown
 	#End Enter Tunnel
 
 	Hurt_Friend:
+		#Display next options
 		la $a0, losing_02
 		jal print
 	
+		#Get user input
 		jal getString
 	
+		#Check if the user choose, kept going
 		la $a0, keep_going
 		la $a1, user_input
 		jal compare_strings
 	
 		beq $t5, $t6, Left_Tunnel
-
+		
+		#Check if the user read the note
 		la $a0, read_note
 		la $a1, user_input
 		jal compare_strings
 		
+		#Else
 		bne $t5, $t6, meltdown
 	#End Hurt Friend
 	
 	Dark_Note:	
+		#Display the next choicex
 		la $a0, losing_03
 		jal print
 	
+		#Get user input
 		jal getString
 	
+		#Check if the user choose to keep going
 		la $a0, keep_going
 		la $a1, user_input
 		jal compare_strings
 	
+		#Else
 		bne $t5, $t6, meltdown
 	#End Dark Note
 	
+	#Change the warning logo to yellow
 	lw $t9, yellow
 	jal start_draw
 	
+	#Display a nuclear power plant warning message
 	jal warning_message
 		
 	Left_Tunnel:
+		#Display the next choices
 		la $a0, losing_04
 		jal print
 	
+		#Get user input
 		jal getString
 
+		#Check if the player choose to look
 		la $a0, look
 		la $a1, user_input
 		jal compare_strings
 		
+		#Else
 		bne $t5, $t6, meltdown
 	#End Left Tunnel
 	
 	Found_Ship:
+		#Display the next choices
 		la $a0, losing_05
 		jal print
 	
+		#Get user input
 		jal getString
 		
+		#Check if the user got on the boat
 		la $a0, board_boat
 		la $a1, user_input
 		jal compare_strings
 	
+		#Else
 		bne $t5, $t6, meltdown
 	#End Found Ship
 
 	Completed_Lost:
+		#Display beat the game message
 		la $a0, losing_06
 		jal print
 	
+		#Else
 		j meltdown
 	#End Losing Route
 
@@ -229,42 +276,53 @@ losing_path:
 
 winning_path:
 	Sitdown:
+		#Display the next message
 		la $a0, winning_01
 		jal print
 	
+		#Get user input
 		jal getString
 		
+		#Check if the user choose to light a match
 		la $a0, light_match
 		la $a1, user_input
 		jal compare_strings
 		
+		#Else
 		bne $t5, $t6, meltdown
 	#end sitdown
 	
-	
+	#Set the hazzard symbol to yellow
 	lw $t9, yellow
 	jal start_draw
 	
+	#Display a nuclear power plant warning
 	jal warning_message
 		
 		
 	Read_Note:
+		#Display the next message
 		la $a0, winning_02
 		jal print
 	
+		#Get user input
 		jal getString
 		
+		#Check if the user choose to stay
 		la $a0, stay
 		la $a1, user_input
 		jal compare_strings
 		
+		#Else
 		bne $t5, $t6, meltdown
 
 
 	Dissengage:
+		#Display the winning message
 		la $a0, nuclear_disengaged
 		jal print
 	
+		#Draw the hazzard sign as green
 		lw $t9, green
 		jal start_draw
 	
@@ -277,29 +335,37 @@ compare_strings:
 	# Register t5 holds return value and t6 holds one so we can compare the two to branch if we succeed
 	li $t6, 1
 	
+	#loops over every char in the strings
 	loop:
+		#Grabs a char from each string
 		lb $t0, 0($a0)
 		lb $t1, 0($a1)
 	
-		#return false
+		#return false if they are not equal
 		bne $t0, $t1, not_equal
-		#return true
+		#return true if we have reached the end of the string and they are equal
 		beq $t1, $zero, equal
 		
+		#increment the string counters
 		addi $a0, $a0, 1
 		addi $a1, $a1, 1
+		
+		#Continue checking the strings
 		j loop
 	
+	#Retrun 1 if they are equal
 	equal:
 		li $t5, 1
 		jr $ra
-		
+	
+	#Return 0 if they are not equal	
 	not_equal:
 		li $t5, 0
 		jr $ra
 
 
 
+#Displayt the warning message
 warning_message:
 	la $a0, nuclear_warning
 	li $v0, 4
@@ -308,11 +374,14 @@ warning_message:
 	jr $ra
 	
 	
-
+	
+#Set the hazzard symbol to red
 meltdown:
+	#Draw the hazzard symbol as red
 	lw $t9, red
 	jal start_draw
 
+	#Print the exploded text
 	la $a0, nuclear_exploded
 	jal print
 	
@@ -320,6 +389,7 @@ meltdown:
 
 
 	
+#Get the user input
 getString:
 	la $a0, input_field
 	li $v0, 4
